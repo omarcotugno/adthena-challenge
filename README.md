@@ -18,7 +18,7 @@ The program:
 | Apples | £1.00 per bag |
 
 ### Current Offers
-1. Apples have **10% off** their normal price this week.  
+1. Apples have **10% off** their normal price this week.
 2. Buy **2 tins of soup** and get a loaf of bread for **half price**.
 
 ---
@@ -28,69 +28,103 @@ The program:
 **Input:**
 ```bash
 PriceBasket Apples Milk Bread
-
-Output:
-
+```
+**Output**:
+```bash
 Subtotal: £3.10
 Apples 10% off: 10p
 Total price: £3.00
-
+```
 No offer example:
-
+```bash
 Subtotal: £1.30
 (No offers available)
 Total price: £1.30
+```
 
+---
 
-⸻
+## Tech Stack
+- Scala
+- SBT (Scala Build Tool)
+- Unit Testing (ScalaTest or Specs2)
 
-Tech Stack
-	•	Scala
-	•	SBT (Scala Build Tool)
-	•	Unit Testing (ScalaTest or Specs2)
+---
 
-⸻
+## Getting Started
 
-Getting Started
+### Using VS Code Dev Container
 
-Prerequisites
-	•	Scala
-	•	SBT
+This repository includes a `.devcontainer` setup for Scala and Spark development. You can open the project in Visual Studio Code and choose **Reopen in Container** to automatically get Java 17, Scala, sbt, and scalafmt installed and configured.
 
-Build & Run
+Steps:
+1. Install [Docker](https://www.docker.com/get-started) and [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
+2. Clone this repository and open it in VS Code.
+3. Select **Reopen in Container** when prompted.
+4. Wait for the container to build and open a terminal inside the container environment.
 
-(Instructions to be completed after implementation)
+### Prerequisites
 
-# Compile
+If you are not using the VS Code Dev Container, you will need to have the following installed on your system:
+
+- [Scala](https://www.scala-lang.org/download/)
+- [sbt (Scala Build Tool)](https://www.scala-sbt.org/download.html)
+
+### Build & Run
+
+You can run the following commands inside the dev container terminal or on your local machine if you have the prerequisites installed.
+
+#### Compile
+```bash
 sbt compile
+```
 
-# Run
+#### Run
+```bash
 sbt "run <items>"
+```
 
-# Example
+**Note:** When using sbt, quotes are needed around the arguments (e.g., `"run Apples Milk Bread"`) to avoid parsing issues.
+
+#### Example
+```bash
 sbt "run Apples Milk Bread"
+```
 
-# Test
+#### Test
+```bash
 sbt test
+```
 
+---
 
-⸻
+## Repository Structure
 
-Repository Structure
-
+```bash
 .
+├── .devcontainer
+│   ├── devcontainer.json
+│   └── Dockerfile
+├── .vscode
+│   ├── extensions.json
+│   └── settings.json
+├── .scalafmt.conf
+├── .gitignore
+├── project
+│   └── plugins.sbt
+├── LICENSE
 ├── src
 │   ├── main
-│   │   └── scala    # Application source code
+│   │   └── scala
 │   └── test
-│       └── scala    # Unit tests
-├── build.sbt        # SBT build configuration
-└── README.md        # This file
+│       └── scala
+├── build.sbt
+└── README.md
+```
 
+---
 
-⸻
-
-License
+## License
 
 This code is provided solely for the purpose of completing the Adthena Data Engineer technical assignment.
 All rights reserved.
