@@ -1,0 +1,32 @@
+{
+  "name": "Scala + Spark (Devcontainer)",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "username": "vscode"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "scalaServerVersion": "latest",
+        "metals.sbtScript": "sbt",
+        "editor.defaultFormatter": "scalameta.metals"
+      },
+      "extensions": [
+        "scalameta.metals",
+        "vscjava.vscode-java-pack",
+        "hediet.vscode-drawio"
+      ]
+    }
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "bash -lc '~/.local/share/coursier/bin/sbt --version && ~/.local/share/coursier/bin/scalafmt --version || true'"
+}
