@@ -1,11 +1,25 @@
 # Java 17 base (Spark 3.5.x-friendly), multi-arch image
 FROM mcr.microsoft.com/devcontainers/java:1-17-bullseye
 
+
 # --- OS deps (root) ---
 USER root
 RUN apt-get update \
     && apt-get install -y curl gzip ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# --- Install Apache Spark ---
+ARG SPARK_VERSION=3.5.1
+ARG HADOOP_FLAVOR=hadoop3
+ENV SPARK_HOME=/opt/spark
+ENV PATH="${SPARK_HOME}/bin:${PATH}"
+RUN set -eux; \
+    curl -fL --retry 5 --retry-all-errors "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-${HADOOP_FLAVOR}.tgz" -o /tmp/spark.tgz; \
+    mkdir -p /opt; \
+    tar -xzf /tmp/spark.tgz -C /opt; \
+    ln -s "/opt/spark-${SPARK_VERSION}-bin-${HADOOP_FLAVOR}" "${SPARK_HOME}"; \
+    rm -f /tmp/spark.tgz; \
+    "${SPARK_HOME}/bin/spark-submit" --version
 
 # --- Install Coursier + tools (as vscode user) ---
 USER vscode
