@@ -49,6 +49,7 @@ Total price: £1.70
 - Scala 2.13
 - sbt
 - ScalaTest (unit tests)
+- Spark 3.5.x
 - VS Code Dev Container (Java 17, Scala, sbt, scalafmt)
 
 ---
@@ -99,6 +100,29 @@ sbt "runSpark <items>"  # run with items, e.g. sbt "run Apples Milk Bread"
 
 **Dependency Inversion**
 - High-level modules (`PriceBasketApp`, `SparkPricingEngine`) depend on abstractions (`Catalogue`, `DiscountRule`) and are wired at runtime via `infra.config.AppConfig`. Core logic does not depend on configuration or Spark.
+
+```
+         +---------------+
+         |      app      |
+         | (CLI entrypoint)
+         +-------+-------+
+                 |
+                 v
+         +---------------+
+         |     infra     |
+         | (config, spark)|
+         +-------+-------+
+                 |
+                 v
+         +---------------+
+         |     core      |
+         | (business logic)|
+         +---------------+
+```
+
+- **app**: User interface and entrypoint, handles CLI input/output.
+- **infra**: Infrastructure layer, configuration, and Spark integration.
+- **core**: Core business logic, domain model, pricing rules.
 
 ### Key Types
 - `core.money.Money` – rounding & GBP helpers.
