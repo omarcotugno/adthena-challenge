@@ -21,7 +21,7 @@ Scala/SBT solution for the **Shopping Basket** problem, implemented with SOLID p
 
 **Input:**
 ```bash
-PriceBasket Apples Milk Bread
+sbt "runSpark Apples Milk Bread"
 ```
 **Output**:
 ```bash
@@ -37,10 +37,10 @@ Total price: £1.30
 ```
 Soup/bread offer example:
 ```bash
-sbt "run Soup Soup Bread"
-# Subtotal: £2.10
-# Buy 2 Soup, Bread half price: 40p
-# Total price: £1.70
+sbt "runSpark Soup Soup Bread"
+Subtotal: £2.10
+Buy 2 Soup, Bread half price: 40p
+Total price: £1.70
 ```
 
 ---
@@ -73,11 +73,11 @@ This repo includes a `.devcontainer/` for a ready-to-code environment.
 ```bash
 sbt compile        # compile sources
 sbt test           # run unit tests
-sbt "run <items>"  # run with items, e.g. sbt "run Apples Milk Bread"
+sbt "runSpark <items>"  # run with items, e.g. sbt "run Apples Milk Bread"
 ```
 
 **Notes:**
-- When using sbt, wrap the `run` arguments in quotes.
+- When using sbt, wrap the `runSpark` arguments in quotes.
 - Unknown items are reported on stderr and result in a non‑zero exit code.
 
 ---
@@ -100,12 +100,14 @@ sbt "run <items>"  # run with items, e.g. sbt "run Apples Milk Bread"
 - `PricingService` depends on the `Offer` abstraction, not concrete implementations.
 
 ### Key Types
-- `util.Money` – integer pence math + formatting.
-- `domain.Product` – catalog and parsing from CLI strings.
-- `domain.Basket` – immutable collection + counting helpers.
-- `pricing.Offer` / `pricing.Discount` – offer contract and discount value object.
-- `pricing.PricingService` – orchestrates subtotal, applies offers, computes total.
-- `cli.PriceBasketApp` – CLI adapter (I/O + exit codes).
+- `core.money.Money` – rounding & GBP helpers.
+- `core.model.{Product, DiscountLine, PricingResult, DomainError}` – domain value objects & errors.
+- `core.catalogue.Catalogue` – trait for product lookup & normalisation; implemented by `infra.config.ConfigCatalogue`.
+- `core.rules.DiscountRule` – offer contract; concrete rules: `PercentageOffPerItem`, `LinkedMultiBuyDiscount` (+ optional `RuleCombinators`).
+- `core.pricing.{Offers, PriceCalculator}` – holds active rules and computes subtotal/discounts/total.
+- `infra.config.{AppConfig, OffersLoader}` – wiring from `application.conf` to runtime objects.
+- `infra.spark.SparkPricingEngine` – Spark adapter: strings → counts → calculator.
+- `app.PriceBasketApp` – CLI entrypoint.
 
 ---
 
@@ -123,16 +125,49 @@ sbt "run <items>"  # run with items, e.g. sbt "run Apples Milk Bread"
 ├── project/
 │   └── plugins.sbt
 ├── src/
-│   ├── main/scala/
-│   │   ├── Main.scala
-│   │   ├── cli/PriceBasketApp.scala
-│   │   ├── domain/{Basket.scala,Product.scala}
-│   │   ├── pricing/{Offer.scala,PricingService.scala}
-│   │   ├── pricing/offers/{ApplesTenPercent.scala,SoupBreadHalfPrice.scala}
-│   │   └── util/Money.scala
-│   └── test/scala/
-│       ├── pricing/{ApplesTenPercentSpec.scala,SoupBreadHalfPriceSpec.scala,PricingServiceSpec.scala}
-│       └── util/MoneySpec.scala
+│   ├── main/
+│   │   ├── resources/
+│   │   │   └── application.conf
+│   │   └── scala/com/example/pricebasket/
+│   │       ├── app/
+│   │       │   └── PriceBasketApp.scala
+│   │       ├── core/
+│   │       │   ├── money/Money.scala
+│   │       │   ├── model/
+│   │       │   │   ├── Product.scala
+│   │       │   │   ├── DiscountLine.scala
+│   │       │   │   ├── PricingResult.scala
+│   │       │   │   └── DomainError.scala
+│   │       │   ├── catalogue/
+│   │       │   │   ├── Catalogue.scala
+│   │       │   │   └── Normaliser.scala
+│   │       │   ├── rules/
+│   │       │   │   ├── DiscountRule.scala
+│   │       │   │   ├── PercentageOffPerItem.scala
+│   │       │   │   ├── LinkedMultiBuyDiscount.scala
+│   │       │   │   └── RuleCombinators.scala
+│   │       │   └── pricing/
+│   │       │       ├── Offers.scala
+│   │       │       └── PriceCalculator.scala
+│   │       └── infra/
+│   │           ├── config/
+│   │           │   ├── AppConfig.scala
+│   │           │   ├── ConfigCatalogue.scala
+│   │           │   └── OffersLoader.scala
+│   │           └── spark/
+│   │               └── SparkPricingEngine.scala
+│   └── test/scala/com/example/pricebasket/
+│       ├── core/
+│       │   ├── money/MoneySpec.scala
+│       │   ├── model/PricingResultSpec.scala
+│       │   ├── catalogue/CatalogueModuleSpec.scala
+│       │   ├── rules/
+│       │   │   ├── PercentageOffPerItemSpec.scala
+│       │   │   └── LinkedMultiBuyDiscountSpec.scala
+│       │   └── pricing/PriceCalculatorSpec.scala
+│       └── infra/
+│           ├── config/{ConfigCatalogueSpec.scala,OffersLoaderSpec.scala}
+│           └── spark/SparkPricingEngineSpec.scala
 └── README.md
 ```
 
@@ -142,6 +177,69 @@ sbt "run <items>"  # run with items, e.g. sbt "run Apples Milk Bread"
 - **Add a new offer:** create a class implementing `Offer` in `pricing/offers/`, then register it in `PricingService.default`.
 - **Formatting:** Run `scalafmt` (if configured) to keep code style consistent.
 - **Exit codes:** `PriceBasketApp.run` returns `0` on success, `2` on usage/parse errors.
+
+---
+
+## Extending the Catalogue & Offers
+
+You can easily extend the product catalogue and offers without modifying core logic, thanks to the SOLID design principles. Here’s how:
+
+### Product & Normalisation Configuration
+
+Products and their normalisation rules are defined in the `application.conf` file using HOCON format. This allows flexible mapping of input strings to canonical product names and setting prices.
+
+Example snippet from `application.conf`:
+
+```hocon
+products {
+  Apples = 100       # price in pence
+  Bread = 80
+  Milk = 130
+  Soup = 65
+}
+
+normaliser {
+  Apples = ["apple", "apples", "appl"]
+  Bread = ["bread", "loaf"]
+  Milk = ["milk", "bottle"]
+  Soup = ["soup", "tin"]
+}
+```
+
+### How to Add a New Product
+
+- Add a new entry under the `products` section with the product name as the key and its price in pence as the value.
+- Add corresponding normalisation aliases under the `normaliser` section to map various input strings to the product.
+
+Example:
+
+```hocon
+products {
+  Chocolate = 150
+}
+
+normaliser {
+  Chocolate = ["choc", "chocolate", "chocbar"]
+}
+```
+
+### How to Add Normalisation Aliases
+
+- Under the `normaliser` section, add or extend the array of aliases for an existing product.
+- This helps the CLI accept various user input forms mapping to the canonical product.
+
+### How to Add New Offers
+
+- Create a new class in `pricing/offers/` implementing the `Offer` trait.
+- Implement the `evaluate` method to define the discount logic.
+- Register your new offer in the `PricingService.default` list so it is applied during pricing.
+
+### Summary
+
+- Products and aliases are configured declaratively via `application.conf`.
+- Offers are added via new classes implementing `Offer` and registered in `PricingService`.
+- This design enables adding new products and offers without changing core pricing or domain logic.
+- Remember to update or add unit tests for any new products or offers to maintain coverage.
 
 ---
 
