@@ -66,6 +66,7 @@ This repo includes a `.devcontainer/` for a ready-to-code environment.
 ### Prerequisites (without Dev Container)
 - Java 17+
 - Scala 2.13
+- Spark 3.5.x
 - sbt
 
 > Check versions with `java -version` and `sbt --version`.
