@@ -1,8 +1,9 @@
 package com.example.pricebasket.infra.spark
 
+import java.time.LocalDate
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.SparkSession
-import com.example.pricebasket.infra.config.ConfigCatalogue
+import com.example.pricebasket.infra.config.{ConfigCatalogue, OffersLoader}
 import com.typesafe.config.ConfigFactory
 import com.example.pricebasket.core.pricing.{Offers, PriceCalculator}
 import com.example.pricebasket.core.model._
@@ -35,9 +36,20 @@ class SparkPricingEngineSpec extends AnyFunSuite {
 
   test("end-to-end pricing with no unknown items") {
     // cat defined above
-    val offers = Offers.default
-    val calc   = PriceCalculator(cat, offers.rules)
-    val eng    = new SparkPricingEngine(calc, cat)
+    val today      = LocalDate.now()
+    val offersConf = ConfigFactory.parseString(s"""
+        |pricebasket {
+        |  offers = [
+        |    { type = "percentage-per-item", product = "Apples", pct = 0.10, label = "Apples 10% off",
+        |      startDate = "${today.minusDays(1)}", endDate = "${today.plusDays(5)}" },
+        |    { type = "linked-multibuy", requiredProduct = "Soup", requiredQty = 2,
+        |      discountedProduct = "Bread", discountPct = 0.50, label = "Bread 50% off (with 2 Soup)" }
+        |  ]
+        |}
+        |""".stripMargin)
+    val rules      = OffersLoader.load(offersConf, "pricebasket")
+    val calc       = PriceCalculator(cat, rules)
+    val eng        = new SparkPricingEngine(calc, cat)
 
     val res = withSpark { implicit spark =>
       eng.price(Seq("Apples", "Soup", "Soup", "Bread"))
