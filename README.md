@@ -85,19 +85,20 @@ sbt "runSpark <items>"  # run with items, e.g. sbt "run Apples Milk Bread"
 ## Architecture (SOLID)
 
 **Single Responsibility**
-- Each class/file has one reason to change (e.g., individual offer logic in its own class).
+- Each package has one reason to change (e.g., `core.rules` for offer logic, `core.catalogue` for product lookup, `infra.spark` for Spark integration).
 
 **Open/Closed**
-- New offers are added by implementing `pricing.Offer` and wiring in `PricingService.default` without modifying core pricing logic.
+- New offers are added by creating a new class in `core.rules` (implementing `DiscountRule`) and wiring it via `core.pricing.Offers`, without modifying existing pricing logic.
+- New products are added via configuration in `application.conf`, not by changing code.
 
 **Liskov Substitution**
-- All offers conform to the `Offer` trait contract (`evaluate` returns an optional `Discount`).
+- All rules conform to the `DiscountRule` trait contract (`apply` takes item counts and returns `Seq[DiscountLine]`), so any new rule can substitute an existing one.
 
 **Interface Segregation**
-- CLI, domain, pricing, and utilities are split into focused modules.
+- Interfaces are small and focused: e.g. `Catalogue` for product lookup/normalisation, `DiscountRule` for offers, `PriceCalculator` for totals. Clients depend only on what they use.
 
 **Dependency Inversion**
-- `PricingService` depends on the `Offer` abstraction, not concrete implementations.
+- High-level modules (`PriceBasketApp`, `SparkPricingEngine`) depend on abstractions (`Catalogue`, `DiscountRule`) and are wired at runtime via `infra.config.AppConfig`. Core logic does not depend on configuration or Spark.
 
 ### Key Types
 - `core.money.Money` – rounding & GBP helpers.
